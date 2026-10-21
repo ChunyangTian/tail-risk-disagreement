@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from scipy.stats import binomtest
 
-# ---------------- settings ----------------
+#=== Settings ===
 base_weights = {"SPY": 0.30, "QQQ": 0.20, "TLT": 0.20, "GLD": 0.15}  # other 15% is cash (0 return)
 candidate = "NVDA"
 window = 750       # use the past 750 days (about 3 years) to fit the models
@@ -31,7 +31,8 @@ probe_q = 0.10     # fixed 10% NVDA portfolio to measure what really happens
 np.random.seed(2026)
 
 
-# ---------------- 1. download data ----------------
+#=== Part 1 ===
+# download data
 tickers = list(base_weights.keys()) + [candidate]
 price = yf.download(tickers, start="2005-01-01", auto_adjust=True)["Close"]
 price = price[tickers].dropna()
@@ -46,7 +47,8 @@ dates = ret.index
 print("data from", dates[0].date(), "to", dates[-1].date(), ",", len(dates), "days")
 
 
-# ---------------- 2. ES and q* ----------------
+#=== Part 2 ===
+# ES and q*
 def get_es(loss):
     # ES = average of the worst 5% losses
     loss = np.sort(loss)
@@ -74,7 +76,8 @@ def get_var_es(base_paths, nvda_paths, q):
     return loss[-k], loss[-k:].mean()
 
 
-# ---------------- 3. the 3 models ----------------
+#=== Part 3 ===
+# the 3 models
 def hs_paths(b, c):
     # HS: every 10-day window in the past is one scenario
     b_paths, c_paths = [], []
@@ -120,7 +123,8 @@ def t_paths(b, c):
     return sim[:, :, 0], sim[:, :, 1], nu
 
 
-# ---------------- 4. hand check on one date ----------------
+#=== Part 4 ===
+# hand check on one date
 # the date just before the COVID crash
 i = dates.get_loc(dates[dates <= "2020-02-21"][-1]) + 1
 b = base_ret[i - window:i]
@@ -142,9 +146,10 @@ print(f"base vol today (EWMA) = {today_b * np.sqrt(252):.1%}, "
       f"average of past 3 years = {b.std() * np.sqrt(252):.1%}")
 
 
-# ---------------- 5. run every month ----------------
+#=== Part 5 ===
+# run every month
 rows = []
-bt_rows = []       # for the backtest in part 8
+bt_rows = []       # for the backtest in part 7
 for i in range(window, len(dates) - future, step):
     b = base_ret[i - window:i]
     c = nvda_ret[i - window:i]
@@ -186,7 +191,8 @@ df.to_csv("results.csv")
 print("\n", len(df), "monthly decisions from", df.index[0].date(), "to", df.index[-1].date())
 
 
-# ---------------- 6. results ----------------
+#=== Part 6 ===
+# results
 print("\n--- q* of each model ---")
 lowest = df[["q_HS", "q_FHS", "q_tMC"]].idxmin(axis=1).value_counts(normalize=True)
 for col in ["q_HS", "q_FHS", "q_tMC"]:
@@ -237,7 +243,8 @@ for date, row in df[df["group"] == 5].iterrows():
 print("model far from the other two in group 5:", count)
 
 
-# ---------------- 7. backtest: which model's q* really kept the risk? ----------------
+#=== Part 7 ===
+# backtest: which model's q* really kept the risk?
 bt = pd.DataFrame(bt_rows, columns=["date", "model", "q", "VaR", "ES", "real_loss"])
 bt.to_csv("backtest.csv", index=False)
 
@@ -267,7 +274,8 @@ print(summary.to_string(index=False))
 print("months:", n, ", expected VaR breaks if the model is right:", round(n * (1 - alpha), 1))
 
 
-# ---------------- 8. plot ----------------
+#=== Part 8 ===
+# plot
 fig, ax = plt.subplots(1, 2, figsize=(11, 4))
 ax[0].plot(df.index, df["D"], color="black", linewidth=1)
 ax[0].set_title("Model disagreement D over time")

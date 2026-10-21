@@ -12,7 +12,7 @@ To compute ES we need a model, and there are many models that all look reasonabl
 
 - **Historical Simulation (HS):** use the past 3 years as it is.
 - **Filtered Historical Simulation (FHS):** same as HS, but scale the past shocks by today's volatility (EWMA).
-- **Student-t Monte Carlo (t-MC):** fit a fat-tail Student-t and simulate.
+- **Student-t Monte Carlo (t-MC):** fit a fat-tail Student-t (degrees of freedom from the kurtosis) and simulate.
 
 Each model decides the NVDA weight q\*, and they often don't agree. Usually people just pick one model. Here I want to ask a different question: **when the 3 models disagree a lot, is the next month more risky?**
 
@@ -21,10 +21,12 @@ I also check a more practical question: **if I really hold each model's q\*, whi
 ## How it works
 
 1. Download daily prices from Yahoo Finance (2005 to today). Base portfolio is SPY 30%, QQQ 20%, TLT 20%, GLD 15%, Cash 15%. The risky stock is NVDA.
-2. Every month (21 trading days), only use the past 750 days (about 3 years) to fit each model. So the model never see the future.
+2. Every month (21 trading days), only use the past 750 days (about 3 years) to fit each model. So the q\* never see the future.
 3. For each model, find q\* = the biggest NVDA weight where the 10-day 95% ES is at most 15% higher than the ES without NVDA:
 
-   q\* = max { q : ES(q) ≤ 1.15 × ES(0) }
+   $q^* = \max \lbrace q : ES(q) \le 1.15 \cdot ES(0) \rbrace$
+
+   I try q from 0 to 0.50, step 0.01.
 
 4. Disagreement D = standard deviation of the 3 q\*. If all models agree, D = 0.
 5. Check what really happen: the max drawdown of a fixed 90% base + 10% NVDA portfolio in the next 20 days.
@@ -53,11 +55,11 @@ Same date, same data, but FHS only allows 2% NVDA while the other two allow 4%. 
 
 ### The 3 models really disagree
 
-| Model | mean q\* | min | max | lowest of the 3 |
-|---|---|---|---|---|
-| HS | 0.084 | 0.03 | 0.24 | 27% of months |
-| FHS | 0.084 | 0.01 | 0.43 | 35% of months |
-| t-MC | 0.067 | 0.04 | 0.14 | 38% of months |
+| Model | mean q\* | min | max |
+|---|---|---|---|
+| HS | 0.084 | 0.03 | 0.24 |
+| FHS | 0.084 | 0.01 | 0.43 |
+| t-MC | 0.067 | 0.04 | 0.14 |
 
 The 3 models give exactly the same q\* in only 3% of months, and the average D is 0.024. So which model you pick really changes the position size. FHS moves the most (from 0.01 to 0.43).
 
@@ -122,10 +124,10 @@ Every month I hold the q\* of each model for the next 10 days and record the rea
 (p-value is a binomial test: is the VaR break rate far from 5%?)
 
 1. All 3 models are a bit too optimistic. The real ES is 5.1% to 5.3%, but the models predicted only 4.2% to 4.6%. They also break their VaR a bit more than 11 times. But all p-values are above 0.16, so I can't say any model is clearly wrong.
-2. FHS is the most optimistic. It predicts the lowest ES (4.23%) but has the highest real ES (5.32%) and the worst single loss (13.60%). FHS is also the model that makes most of the big disagreement, so the big positions from FHS are the ones to be careful with.
-3. The min rule (take the smallest q\* every month) has the lowest real ES (5.02%), and the return is only a little lower (0.50% vs 0.53% for HS every 10 days). It is like a cheap insurance, but the improvement is small.
+2. FHS has the biggest gap. It predicts the lowest ES (4.23%) but has the highest real ES (5.32%) and the worst single loss (13.60%). But the real ES of HS is 5.25%, so the difference is small.
+3. The min rule (take the smallest q\* every month) has the lowest real ES (5.02%), and the return is only a little lower (0.50% vs 0.53% for HS every 10 days). But it also hold less NVDA (mean q\* 0.057 vs 0.084), so most of this just comes from a smaller position.
 
-So if I use ES to decide a position, I would not trust one model alone, especially FHS. Taking the most conservative of a few models is a simple way to protect the tail.
+So the backtest does not show one model is clearly better. All 3 are a bit optimistic, and 225 months is not enough to say more.
 
 ## Limitations
 
